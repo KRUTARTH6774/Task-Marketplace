@@ -1,13 +1,75 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import walletconnectLogo from './walletconnectLogo.svg'
 import coinbaseLogo from './icons8-coinbase.svg'
+import { ethers } from "ethers";
+import goldCoinABI from "../goldCoinABI.json"; // Make sure this file exists
+
 import {
     Link
 } from "react-router-dom";
-export default function NavBar({ connectWallet, disconnectWallet, walletDetails }) {
+export default function NavBar({ connectWallet, disconnectWallet, walletDetails, goldBalance, fetchGoldBalance, fetchEthBalance }) {
     const [toggle, setToggle] = useState(false)
     const [toggleMenu, setToggleMenu] = useState(false)
     const [toggleSidebar, setToggleSidebar] = useState(false)
+    const goldTokenAddress = "0xbC50a5e1f63d239f30B0C9Bf35cfD39697b9b9Ae"; // replace with your real token address
+    // const [goldBalance, setGoldBalance] = useState("0");
+    const [ethToSpend, setEthToSpend] = useState(); // default
+    const [goldToSpend, setGoldToSpend] = useState(); // default
+    const [loading, setLoading] = useState(false);
+    async function buyGold() {
+        setLoading(true);
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
+
+            const tx = await goldToken.buy({
+                value: ethers.parseEther(ethToSpend),
+            });
+            await tx.wait();
+            alert("✅ GOLD purchased!");
+            await fetchGoldBalance(); // refresh after purchase
+            await fetchEthBalance();
+        } catch (error) {
+            console.error("Error buying GOLD:", error);
+            alert("❌ Failed to buy GOLD");
+        }
+        setLoading(false);
+    }
+    async function sellGold() {
+        if (goldToSpend < 100) {
+            alert("Selling less than 100 GOLD is inefficient due to gas fees.");
+            return;
+        }          
+        setLoading(true);
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
+    
+            const sellInWei = ethers.parseUnits(goldToSpend, 18);
+    
+            const tx = await goldToken.sell(sellInWei);
+            await tx.wait();
+    
+            alert("✅ GOLD sold for ETH");
+            await fetchGoldBalance();
+            await fetchEthBalance();
+        } catch (err) {
+            console.error("❌ Error selling GOLD:", err);
+            alert("Failed to sell GOLD");
+        }
+        setLoading(false);
+    }
+    
+    useEffect(() => {
+        if (walletDetails.account && typeof fetchGoldBalance === "function") {
+            fetchGoldBalance();
+        }
+    }, [walletDetails.account]);
+
+
+
     return (
         <nav class="bg-gray-800">
             <div class="mx-auto px-2 sm:px-6 lg:px-8">
@@ -31,7 +93,7 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails 
                         </div>
                         <div class="hidden sm:ml-6 sm:block">
                             <div class="flex space-x-4">
-                                <Link to='/tasks' class="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white" aria-current="page">Explore Task</Link>
+                                {walletDetails.account ? <Link to='/tasks' class="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white" aria-current="page">Explore Task</Link> : <button class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white" onClick={() => { alert("Try to connect with MetaMask First!!") }}>Explore Task</button>}
                                 <a href="#" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Team</a>
                                 <a href="#" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">About Us</a>
                                 {/* <a href="#" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Calendar</a> */}
@@ -72,19 +134,68 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails 
 
                                 </div>
 
-                                {walletDetails.account ? (
-                                    <div>
-                                        {/* <span class="ms-3 space-y-2  p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">Dashboard</span> */}
-                                        <h1 className='dark:text-white text-2xl'><strong>Balance:</strong> {walletDetails.balance} ETH</h1>
-                                        <h1 className='dark:text-white text-2xl'><strong>Network:</strong> {walletDetails.network} <h5 className='text-sm'>(Chain ID: {walletDetails.chainId})</h5></h1>
-                                    </div>
-                                ) : (
-                                    <button onClick={connectWallet}>Connect Wallet</button>
-                                )}
+                                {walletDetails.account ?
+                                    loading ? (
+                                        <div class="text-center">
+                                            <div role="status" style={{
+                                                display: "flex",
+                                                justifyContent: "center",
+                                                flexDirection: "column",
+                                                alignItems: "center"
+                                            }}>
+                                                <svg aria-hidden="true" class="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor" />
+                                                    <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill" />
+                                                </svg>
+                                                <p className='text-gray-400'>⏳ waiting for confirmation on-chain</p>
+                                            </div>
+                                        </div>
 
-                                <p class="mb-6 text-2xl mt-3 text-gray-500 dark:text-gray-400">Welcome to your Wallet!</p>
+                                    ) :
+                                        <div>
+
+                                            <h1 className='dark:text-white text-2xl'><strong>Balance:</strong> {walletDetails.balance} ETH</h1>
+                                            <h1 className='dark:text-yellow-500  text-2xl'><strong>Gold Balance:</strong> {goldBalance} GOLD</h1>
+                                            <h1 className='dark:text-white text-2xl'><strong>Network:</strong> {walletDetails.network} <h5 className='text-sm'>(Chain ID: {walletDetails.chainId})</h5></h1>
+                                            <div className="mt-2">
+                                                <input
+                                                    type="number"
+                                                    value={ethToSpend}
+                                                    onChange={(e) => setEthToSpend(e.target.value)}
+                                                    className="w-full rounded px-2 py-1 text-sm mb-2 dark:bg-gray-800 dark:text-white border border-gray-300"
+                                                    placeholder="Etner ETH amount"
+                                                />
+                                                <button
+                                                    onClick={buyGold}
+                                                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded"
+                                                >
+                                                    Buy GOLD
+                                                </button>
+                                            </div>
+                                            <div className="mt-2">
+                                                <input
+                                                    type="number"
+                                                    value={goldToSpend}
+                                                    onChange={(e) => setGoldToSpend(e.target.value)}
+                                                    className="w-full rounded px-2 py-1 text-sm mb-2 dark:bg-gray-800 dark:text-white border border-gray-300"
+                                                    placeholder="Etner Gold amount"
+                                                />
+                                                <button
+                                                    onClick={sellGold}
+                                                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded"
+                                                >
+                                                    Sell GOLD
+                                                </button>
+                                            </div>
+
+                                        </div>
+                                    : (
+                                        <button onClick={connectWallet}>Connect Wallet</button>
+                                    )}
+
+                                {/* <p class="mb-6 text-2xl mt-3 text-gray-500 dark:text-gray-400">Welcome to your Wallet!</p>
                                 <p class="mb-6 text-sm -mt-2 text-gray-500 dark:text-gray-400">Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
-                                <p class="mb-6 text-sm -mt-2 text-gray-500 dark:text-gray-400">Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
+                                <p class="mb-6 text-sm -mt-2 text-gray-500 dark:text-gray-400">Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p> */}
                                 {/* <div class="grid grid-cols-2 gap-4">
                                     <a href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">Learn more</a>
                                     <a href="#" class="inline-flex items-center px-4 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">Get access <svg class="rtl:rotate-180 w-3.5 h-3.5 ms-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
@@ -103,13 +214,13 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails 
                                     width: "-webkit-fill-available",
                                     gap: "20px",
                                 }}>
-                                    <img class="w-6 h-5 me-2 -ms-1" src={walletconnectLogo}  />
+                                    <img class="w-6 h-5 me-2 -ms-1" src={walletconnectLogo} />
                                     WalletConnect</button>
                                 <button type="button" class="text-gray-900 bg-white  hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:focus:ring-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 " style={{
                                     width: "-webkit-fill-available",
                                     gap: "20px",
                                 }}>
-                                    <img class="w-6 h-7 me-2 -ms-1" src={coinbaseLogo}  />
+                                    <img class="w-6 h-7 me-2 -ms-1" src={coinbaseLogo} />
                                     Coinbase Wallet</button>
                             </div>
                         </div>
@@ -119,7 +230,7 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails 
 
             <div class="sm:hidden" id="mobile-menu" style={{ display: toggleMenu ? "block" : "none" }}>
                 <div class="space-y-1 px-2 pt-2 pb-3">
-                    <a href="#" class="block rounded-md bg-gray-900 px-3 py-2 text-base font-medium text-white" aria-current="page">Explore Task</a>
+                    {walletDetails ? <Link to='/tasks' class="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white" aria-current="page">Explore Task</Link> : <alert>Try to connect with MertaMask</alert>}
                     <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Team</a>
                     <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white">About Us</a>
                     {/* <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Calendar</a> */}

@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import TaskCard from './TaskCard';
+import goldCoinABI from "../goldCoinABI.json";
+import { create as ipfsHttpClient } from 'ipfs-http-client';
 import { ethers } from "ethers";
 import contractABI from "../contractABI.json";
-const contractAddress = "0x81D91ceC098A9C2a3dDe39f0a9FF341535C45E83";
-// const tasks = [
-//     { id: 1, title: "Build Landing Page", description: "Design and develop a modern, responsive React landing page with Tailwind CSS for our product launch.", reward: "0.05", deadline: "March 15, 2025", owner: "0x5B3C...EDD4", onClaim: (id) => console.log("Claim Task", id) },
-//     { id: 2, title: "Write Smart Contract", description: "Develop a secure Ethereum smart contract for handling decentralized payments and escrow.", reward: "0.1", deadline: "March 20, 2025", owner: "0xAb8C...FE98", onClaim: (id) => console.log("Claim Task", id) },
-//     { id: 3, title: "Fix UI Bugs", description: "Identify and fix layout inconsistencies and UI bugs in an existing React project.", reward: "0.02", deadline: "March 12, 2025", owner: "0x6D3F...A2C9", onClaim: (id) => console.log("Claim Task", id) },
-//     { id: 4, title: "Fix UI Bugs", description: "Identify and fix layout inconsistencies and UI bugs in an existing React project.", reward: "0.02", deadline: "March 12, 2025", owner: "0x6D3F...A2C9", onClaim: (id) => console.log("Claim Task", id) }
-// ];
-export default function Tasks({ walletDetails }) {
+import { PinataSDK } from "pinata";
+const contractAddress = "0x8D76d8d83EB047B1773Db419b63f3a98861947d5";
+// const contractAddress = "0x80e689bE32Cad9f488d7494C39808968CC8CCD83";
+// const contractAddress = "0x81D91ceC098A9C2a3dDe39f0a9FF341535C45E83";
+const goldTokenAddress = "0xbC50a5e1f63d239f30B0C9Bf35cfD39697b9b9Ae"; // Replace with actual
+const JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiIyYjVkMTM2Ny05ZmE2LTQwZjYtOWNlMS1iMDk1MTNlODViMmQiLCJlbWFpbCI6IjIwMTkwMTA5OEBkYWlpY3QuYWMuaW4iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiN2ZiZWU3MWRiYzM5YzgyOGNjY2EiLCJzY29wZWRLZXlTZWNyZXQiOiJlOTQzZTUxMzdiMDQ0OTYwY2MxYzc1MDc2ZjU2MWYyYzMyMjRmZTNhZmJiN2I1OTBlODNmMGNiNmE4ZDdlMGQ3IiwiZXhwIjoxNzc2NDU3MDgzfQ.4ve_RsSMA06BuV-416hrT5mhyjA8naj2kGrAQPnctZY";
+// const token = 'z6MkngXkeWBdaWpjchy2MkLNhPk4mruQCw172FDCk7CfTfBZ';
+const tokenDecimals = 18;
+
+export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fetchEthBalance }) {
     const [toggleDropdown, setToggleDropdown] = useState(false)
     const [searchbarValue, setSearchbarValue] = useState('')
     const [toggleCreatetask, setToggleCreatetask] = useState(false)
@@ -18,27 +22,131 @@ export default function Tasks({ walletDetails }) {
     const [filteredTasks, setFilteredTasks] = useState([]);
     const [category, setCategory] = useState('');
     const [loading, setLoading] = useState(false);
-    async function connectContract() {
-        if (window.ethereum) {
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            await window.ethereum.request({ method: "eth_requestAccounts" });
-            const signer = await provider.getSigner();
-            return new ethers.Contract(contractAddress, contractABI, signer);
+
+    async function uploadFileToIPFS(file) {
+        try {
+            const formData = new FormData();
+
+            formData.append("file", file);
+
+            formData.append("network", "public");
+
+            const request = await fetch("https://uploads.pinata.cloud/v3/files", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${JWT}`,
+                },
+                body: formData,
+            });
+            const response = await request.json();
+            console.log(response);
+            return response['data']['cid']
+        } catch (error) {
+            console.log(error);
         }
     }
-    async function createTask(title, description, reward, deadline, onSuccess = () => { }) {
+    async function submitWork(taskId, file) {
+        // 1) pin it exactly like you do in createTask
+        let submissionCID;
+        try {
+          submissionCID = await uploadFileToIPFS(file);
+        } catch {
+          alert("Failed to upload submission");
+          return;
+        }
+      
+        // 2) call the contract
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer   = await provider.getSigner();
+        const taskC    = new ethers.Contract(contractAddress, contractABI, signer);
+      
+        try {
+          const tx = await taskC.submitWork(taskId, submissionCID);
+          await tx.wait();
+          await fetchTasks();        // refresh UI to show new submissionCID
+          alert("Work submitted!");
+        } catch (err) {
+          console.error(err);
+          alert("On-chain submitWork failed");
+        }
+      }
+      
+    async function connectContract() {
+        if (window.ethereum) {
+            try {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                const signer = await provider.getSigner();
+                return new ethers.Contract(contractAddress, contractABI, signer);
+            } catch (err) {
+                console.error("❌ Error fetching tasks:", err);
+            }
+        }
+    }
+    async function completeTask(taskId) {
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const taskContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+            const tx = await taskContract.completeTask(taskId);
+            await tx.wait();
+
+            console.log("✅ Task completed!");
+            await fetchTasks(); // Refresh UI
+            await fetchGoldBalance(); // Refresh balance after reward is sent
+            await fetchEthBalance();
+        } catch (err) {
+            console.error("❌ Error completing task:", err);
+            alert("Failed to complete task");
+        }
+    }
+
+    async function createTask(
+        title,
+        description,
+        deadline,    // uint256
+        reward,      // string or number
+        fileCID,     // string
+        onSuccess = () => { }
+    ) {
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
+            const taskContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+            const rewardInWei = ethers.parseUnits(reward.toString(), tokenDecimals);
+
+            // Step 1: Approve GOLD transfer
+            const approveTx = await goldToken.approve(contractAddress, rewardInWei);
+            await approveTx.wait();
+
+            // Step 2: Create the task
+            const tx = await taskContract.createTask(title, description, deadline, rewardInWei, fileCID);
+            await tx.wait();
+            console.log("✅ Task created");
+            await fetchGoldBalance();
+            await fetchEthBalance();
+            onSuccess();
+        } catch (err) {
+            console.error("❌ Error creating task:", err);
+        }
+    }
+    async function claimTask(taskid) { 
+        setLoading(true);
         const contract = await connectContract();
         try {
-            const tx = await contract.createTask(title, description, deadline, {
-                value: reward // 👈 Send reward as ETH to contract
-            });
+            const tx = await contract.claimTask(taskid);
 
             await tx.wait();
-            console.log("Task created successfully!");
-            onSuccess();
+            console.log("Task claimed successfully!");
+            fetchTasks();
+            // onSuccess();
         } catch (error) {
-            console.error("Failed to create task:", error);
+            console.error("Failed to claim task:", error);
         }
+        setLoading(false);
     }
     useEffect(() => {
         fetchTasks();
@@ -52,7 +160,13 @@ export default function Tasks({ walletDetails }) {
 
             for (let i = 1; i <= Number(taskCount); i++) {
                 const task = await contract.tasks(i);
-
+                const fileUrl = task.fileCID
+                    ? `https://red-tropical-planarian-622.mypinata.cloud/ipfs/${task.fileCID}`
+                    : null;
+                const submitedfileUrl = task.submissionCID
+                    ? `https://red-tropical-planarian-622.mypinata.cloud/ipfs/${task.submissionCID}`
+                    : null;
+                // await url(task.fileCID);
                 taskArray.push({
                     id: Number(task.id),
                     title: task.title,
@@ -63,7 +177,10 @@ export default function Tasks({ walletDetails }) {
                     completed: task.completed,
                     claimed: task.claimed,
                     deadline: new Date(Number(task.deadline) * 1000).toLocaleString(),
-                    onClaim: (id) => console.log("Claim Task", id)
+                    fileURL: fileUrl,
+                    onClaim: (id) => console.log("Claim Task", id),
+                    submitted : task.submitted,
+                    submissionURL : submitedfileUrl
                 });
             }
             // const task = await contract.tasks(1);
@@ -97,10 +214,11 @@ export default function Tasks({ walletDetails }) {
         id: 5,
         title: '',
         description: '',
-        file: null,
         reward: null,
         deadline: '',
         owner: walletDetails.account,
+        file: null,
+        fileCID: null,
         onClaim: (id) => console.log("Claim Task", id)
     });
     const handleChange = (e) => {
@@ -112,15 +230,56 @@ export default function Tasks({ walletDetails }) {
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const rewardAmount = parseFloat(formData.reward);
+        const currentBalance = parseFloat(goldBalance);
+        if (isNaN(rewardAmount) || rewardAmount < 0) {
+            alert("⚠️ Please enter a valid reward amount.");
+            return;
+        }
+
+        if (rewardAmount > currentBalance) {
+            alert("❌ You don’t have enough GOLD to create this task.");
+            return;
+        }
+        // 🔼 Upload the file to IPFS
+        let fileCID = "";
+        console.log("✅ formData.file", formData.file);
+        if (formData.file) {
+            try {
+                fileCID = await uploadFileToIPFS(formData.file);
+                console.log("✅ File uploaded to IPFS:", fileCID);
+            } catch (error) {
+                console.error("❌ IPFS upload failed:", error);
+                alert("Failed to upload file. Please try again.");
+                return;
+            }
+        }
+
         setFormData(prevData => ({
             ...prevData,
-            ['id']: taskID
+            ['id']: taskID,
+            'fileCID': fileCID
         }));
         console.log(formData);
-        createTask(formData.title, formData.description, formData.reward, Math.floor(new Date(formData.deadline).getTime() / 1000), async () => {
-            await fetchTasks(); // ✅ Fetch again only after confirmed
-            // setToggleCreatetask(false); // Close modal
-        });
+        // createTask(formData.title, formData.description, formData.reward, Math.floor(new Date(formData.deadline).getTime() / 1000, fileCID,), async () => {
+        //     await fetchTasks(); // ✅ Fetch again only after confirmed
+        //     // setToggleCreatetask(false); // Close modal
+        // });
+        createTask(
+            formData.title,
+            formData.description,
+            // deadline first:
+            Math.floor(new Date(formData.deadline).getTime() / 1000),
+            // reward next:
+            formData.reward,
+            // and fileCID last:
+            fileCID,
+            // onSuccess callback:
+            async () => {
+                await fetchTasks();
+                setToggleCreatetask(false);
+            }
+        );
         setLoading(true);
         // tasks.push(formData);
         // await fetchTasks();
@@ -194,14 +353,14 @@ export default function Tasks({ walletDetails }) {
                                 <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor" />
                                 <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill" />
                             </svg>
-                            <p className='text-gray-400'>⏳ Creating task... waiting for confirmation on-chain</p>
+                            <p className='text-gray-400'>⏳ waiting for confirmation on-chain</p>
                         </div>
                     </div>
 
                 ) :
                     <div className='pb-[3vw]'>
                         {filteredTasks.length > 0 ? (
-                            filteredTasks.slice().reverse().map(task => <TaskCard key={task.id} task={task} />)
+                            filteredTasks.slice().reverse().map(task => <TaskCard key={task.id} task={task} claimTask={claimTask} userId={walletDetails.account} completeTask={completeTask} submitWork={submitWork} />)
                         ) : (
                             <p className="text-gray-500 col-span-full">No tasks found.</p>
                         )}
@@ -249,7 +408,7 @@ export default function Tasks({ walletDetails }) {
                                         <div class="flex items-center justify-between px-3 py-2 border-t dark:border-gray-600 border-gray-200">
                                             <div class="flex ps-0 p-0 items-center w-[70vw] space-x-1 rtl:space-x-reverse sm:ps-2">
                                                 <label class="block mb-2 w-[20%] text-sm font-medium text-gray-900 dark:text-white" for="file_input">Upload file</label>
-                                                <input class="block w-full text-sm text-gray-900 border  border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" name="file" value={formData.file} onChange={handleChange} id="file_input" type="file" />
+                                                <input class="block w-full text-sm text-gray-900 border  border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" name="file" onChange={(e) => setFormData(prev => ({ ...prev, file: e.target.files[0] }))} id="file_input" type="file" />
                                             </div>
                                         </div>
                                     </div>

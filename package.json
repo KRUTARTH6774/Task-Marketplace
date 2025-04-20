@@ -3,17 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@pinata/sdk": "^2.1.0",
     "@tailwindcss/vite": "^4.0.13",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "@web3-storage/access": "^20.2.0",
+    "@web3-storage/capabilities": "^18.1.0",
+    "@web3-storage/upload-client": "^17.1.4",
+    "@web3-storage/w3up-client": "^17.2.0",
     "ethers": "^6.13.5",
+    "ipfs-http-client": "^60.0.1",
+    "pinata": "^2.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
-    "web3": "^4.16.0"
+    "web3": "^4.16.0",
+    "web3.storage": "^4.5.5"
   },
   "scripts": {
     "start": "react-scripts start",

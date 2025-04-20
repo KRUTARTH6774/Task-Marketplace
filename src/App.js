@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import NavBar from './components/NavBar';
 import { ethers } from "ethers";
+import goldCoinABI from "./goldCoinABI.json";
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,11 +20,53 @@ function App() {
     network: null,
     chainId: null
   });
+  const goldTokenAddress = "0xbC50a5e1f63d239f30B0C9Bf35cfD39697b9b9Ae";
 
-  useEffect(() => {
+  useEffect( () =>  {
+    const fetchData = async (savedDetails) => {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        const newBalance = await provider.getBalance(address);
+  
+        setWalletDetails((prev) => ({
+          ...prev,
+          balance: ethers.formatEther(newBalance),
+        }));
+  
+        const updated = {
+          ...savedDetails,
+          balance: ethers.formatEther(newBalance),
+        };
+  
+        localStorage.setItem("walletDetails", JSON.stringify(updated));
+        // setWalletDetails(JSON.parse(updated));
+        setWalletDetails(updated);
+      } catch (err) {
+        console.error("Error fetching ETH balance:", err);
+      }
+    };
+  
+    // fetchData();
     const savedDetails = localStorage.getItem("walletDetails");
     if (savedDetails) {
-      setWalletDetails(JSON.parse(savedDetails));
+      // fetchEthBalance();
+      fetchData(JSON.parse(savedDetails));
+      // setWalletDetails((prev) => ({
+      //   ...prev,
+      //   balance: ethers.formatEther(newBalance),
+      // }));
+
+      // Optional: update localStorage too if needed
+      // const updated = {
+      //   ...JSON.parse(savedDetails),
+      //   balance: ethers.formatEther(walletDetails.b),
+      // };
+
+      // localStorage.setItem("walletDetails", JSON.stringify(updated));
+
+      // setWalletDetails(JSON.stringify(savedDetails));
     }
 
     if (window.ethereum) {
@@ -63,6 +106,7 @@ function App() {
 
         setWalletDetails(details);
         localStorage.setItem("walletDetails", JSON.stringify(details));
+        await fetchGoldBalance();
       } catch (error) {
         console.error("User denied wallet connection", error);
       }
@@ -80,11 +124,49 @@ function App() {
     localStorage.removeItem("walletDetails");
     window.location.reload();
   }
+  const [goldBalance, setGoldBalance] = useState("0");
+
+  async function fetchEthBalance() {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      const newBalance = await provider.getBalance(address);
+
+      setWalletDetails((prev) => ({
+        ...prev,
+        balance: ethers.formatEther(newBalance),
+      }));
+
+      // Optional: update localStorage too if needed
+      const updated = {
+        ...walletDetails,
+        balance: ethers.formatEther(newBalance),
+      };
+
+      localStorage.setItem("walletDetails", JSON.stringify(updated));
+    } catch (err) {
+      console.error("Error fetching ETH balance:", err);
+    }
+  }
+
+  async function fetchGoldBalance() {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
+      const userAddress = await signer.getAddress();
+      const raw = await goldToken.balanceOf(userAddress);
+      setGoldBalance(ethers.formatUnits(raw, 18));
+    } catch (err) {
+      console.error("Error fetching GOLD balance:", err);
+    }
+  }
   return (
     <Router>
       <Routes>
-        <Route path="/" element={[<NavBar connectWallet={connectWallet} disconnectWallet={disconnectWallet} walletDetails={walletDetails}/>, <LandingPage walletDetails={walletDetails} />]} />
-        <Route path="/tasks" element={[<NavBar connectWallet={connectWallet} disconnectWallet={disconnectWallet} walletDetails={walletDetails} />, <Tasks walletDetails={walletDetails}/>]} />
+        <Route path="/" element={[<NavBar connectWallet={connectWallet} disconnectWallet={disconnectWallet} walletDetails={walletDetails} goldBalance={goldBalance} fetchGoldBalance={fetchGoldBalance} fetchEthBalance={fetchEthBalance}/>, <LandingPage walletDetails={walletDetails} goldBalance={goldBalance} fetchGoldBalance={fetchGoldBalance} />]} />
+        <Route path="/tasks" element={[<NavBar connectWallet={connectWallet} disconnectWallet={disconnectWallet} walletDetails={walletDetails} goldBalance={goldBalance} fetchGoldBalance={fetchGoldBalance} fetchEthBalance={fetchEthBalance} />, <Tasks walletDetails={walletDetails} fetchGoldBalance={fetchGoldBalance} goldBalance={goldBalance} fetchEthBalance={fetchEthBalance}/>]} />
       </Routes>
     </Router>
   );
