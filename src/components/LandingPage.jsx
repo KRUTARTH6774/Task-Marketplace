@@ -2,30 +2,7 @@ import React from 'react'
 
 export default function LandingPage({ walletDetails }) {
     return (
-        // <div style={{
-        //     minHeight: 'calc(100vh - 64px)',
-        //     display: 'flex',
-        //     flexDirection: 'column',
-        //     justifyContent: 'space-between',
-        //     backgroundColor: '#1f2937',
-        // }}>
-        //     <div className="p-6 flex justify-center flex-col items-center">
-        //         <h1 class="mb-6 text-5xl font-normal text-gray-500 lg:text-xl sm:px-16 xl:px-48 dark:text-gray-400">{account ? `Connected: ${account.substring(0, 6)}...` : "Connect Wallet"}</h1>
-        //         <h1 class="mb-4 text-4xl font-extrabold tracking-tight leading-none text-gray-900 md:text-5xl lg:text-6xl dark:text-white">Assign Tasks</h1>
-        //         <p class="mb-8 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 lg:px-48 dark:text-gray-400">oR Do Tasks & Earn</p>
-        //         <p class="mb-8 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 lg:px-48 dark:text-gray-400">Cryptocurrency</p>
-        //     </div>
-            // <div className="p-6 text-center">
-            //     {/* <div className="p-6 text-center">
-            //         <button className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            //             Connect to Wallet
-            //         </button>
-            //     </div> */}
-            //     <button className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            //         Learn More
-            //     </button>
-            // </div>
-        // </div>
+        
         <section class="bg-white dark:bg-gray-900" style={{
                 minHeight: 'calc(100vh - 64px)',
                 display: 'flex',

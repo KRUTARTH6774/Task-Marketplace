@@ -18,9 +18,10 @@ function App() {
     account: null,
     balance: null,
     network: null,
-    chainId: null
+    chainId: null,
+    Goldrate : null,
   });
-  const goldTokenAddress = "0xbC50a5e1f63d239f30B0C9Bf35cfD39697b9b9Ae";
+  const goldTokenAddress = "0xd878E7C57Eb81a6182010672caA7C20bEDB7D847";
 
   useEffect( () =>  {
     const fetchData = async (savedDetails) => {
@@ -48,25 +49,10 @@ function App() {
       }
     };
   
-    // fetchData();
+
     const savedDetails = localStorage.getItem("walletDetails");
     if (savedDetails) {
-      // fetchEthBalance();
       fetchData(JSON.parse(savedDetails));
-      // setWalletDetails((prev) => ({
-      //   ...prev,
-      //   balance: ethers.formatEther(newBalance),
-      // }));
-
-      // Optional: update localStorage too if needed
-      // const updated = {
-      //   ...JSON.parse(savedDetails),
-      //   balance: ethers.formatEther(walletDetails.b),
-      // };
-
-      // localStorage.setItem("walletDetails", JSON.stringify(updated));
-
-      // setWalletDetails(JSON.stringify(savedDetails));
     }
 
     if (window.ethereum) {
@@ -99,7 +85,7 @@ function App() {
 
         const details = {
           account: checksumAddress,
-          balance: ethers.formatEther(userBalance), // Convert Wei to ETH
+          balance: ethers.formatEther(userBalance), 
           network: networkInfo.name,
           chainId: networkInfo.chainId.toString()
         };
@@ -138,7 +124,7 @@ function App() {
         balance: ethers.formatEther(newBalance),
       }));
 
-      // Optional: update localStorage too if needed
+      
       const updated = {
         ...walletDetails,
         balance: ethers.formatEther(newBalance),
@@ -157,6 +143,14 @@ function App() {
       const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
       const userAddress = await signer.getAddress();
       const raw = await goldToken.balanceOf(userAddress);
+      const bank = await goldToken.bankStatus();
+      // console.log("----------> ", ethers.formatUnits(bank[0]));
+      // console.log("----------> ", ethers.formatUnits(bank[1],-18));
+      console.log("----------> ", bank[2]);
+      setWalletDetails((prev) => ({
+        ...prev,
+        Goldrate: bank[2],
+      }));
       setGoldBalance(ethers.formatUnits(raw, 18));
     } catch (err) {
       console.error("Error fetching GOLD balance:", err);

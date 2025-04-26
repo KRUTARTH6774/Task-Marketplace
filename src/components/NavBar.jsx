@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import walletconnectLogo from './walletconnectLogo.svg'
 import coinbaseLogo from './icons8-coinbase.svg'
 import { ethers } from "ethers";
-import goldCoinABI from "../goldCoinABI.json"; // Make sure this file exists
+import goldCoinABI from "../goldCoinABI.json";
 
 import {
     Link
@@ -11,10 +11,9 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
     const [toggle, setToggle] = useState(false)
     const [toggleMenu, setToggleMenu] = useState(false)
     const [toggleSidebar, setToggleSidebar] = useState(false)
-    const goldTokenAddress = "0xbC50a5e1f63d239f30B0C9Bf35cfD39697b9b9Ae"; // replace with your real token address
-    // const [goldBalance, setGoldBalance] = useState("0");
-    const [ethToSpend, setEthToSpend] = useState(); // default
-    const [goldToSpend, setGoldToSpend] = useState(); // default
+    const goldTokenAddress = "0xd878E7C57Eb81a6182010672caA7C20bEDB7D847";
+    const [ethToSpend, setEthToSpend] = useState();
+    const [goldToSpend, setGoldToSpend] = useState();
     const [loading, setLoading] = useState(false);
     async function buyGold() {
         setLoading(true);
@@ -22,13 +21,14 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
             const provider = new ethers.BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
             const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
+            console.log("--------------> ", ethers.parseEther(ethToSpend));
 
             const tx = await goldToken.buy({
                 value: ethers.parseEther(ethToSpend),
             });
             await tx.wait();
             alert("✅ GOLD purchased!");
-            await fetchGoldBalance(); // refresh after purchase
+            await fetchGoldBalance();
             await fetchEthBalance();
         } catch (error) {
             console.error("Error buying GOLD:", error);
@@ -40,18 +40,18 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
         if (goldToSpend < 100) {
             alert("Selling less than 100 GOLD is inefficient due to gas fees.");
             return;
-        }          
+        }
         setLoading(true);
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
             const goldToken = new ethers.Contract(goldTokenAddress, goldCoinABI, signer);
-    
+
             const sellInWei = ethers.parseUnits(goldToSpend, 18);
-    
+
             const tx = await goldToken.sell(sellInWei);
             await tx.wait();
-    
+
             alert("✅ GOLD sold for ETH");
             await fetchGoldBalance();
             await fetchEthBalance();
@@ -61,7 +61,7 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
         }
         setLoading(false);
     }
-    
+
     useEffect(() => {
         if (walletDetails.account && typeof fetchGoldBalance === "function") {
             fetchGoldBalance();
@@ -96,7 +96,6 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
                                 {walletDetails.account ? <Link to='/tasks' class="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white" aria-current="page">Explore Task</Link> : <button class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white" onClick={() => { alert("Try to connect with MetaMask First!!") }}>Explore Task</button>}
                                 <a href="#" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Team</a>
                                 <a href="#" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">About Us</a>
-                                {/* <a href="#" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">Calendar</a> */}
                             </div>
                         </div>
                     </div>
@@ -113,7 +112,7 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
 
 
                             </div>
-                            <div id="drawer-right-example" style={{ right: toggleSidebar ? "320px" : "0px" }} class="fixed top-0 right-0 z-40 h-screen border-4  border-white rounded-l-lg p-4 overflow-y-auto transition-transform translate-x-full bg-white w-80 dark:bg-gray-800" tabindex="-1" aria-labelledby="drawer-right-label">
+                            <div id="drawer-right-example" style={{ right: toggleSidebar ? "419px" : "0px", width: "26rem", padding: "0.2rem" }} class="fixed top-0 right-0 z-40 h-screen border-4  border-white rounded-l-lg p-4 overflow-y-auto transition-transform translate-x-full bg-white w-80 dark:bg-gray-800" tabindex="-1" aria-labelledby="drawer-right-label">
                                 <div class="flex flex-1 items-center justify-center sm:items-anchor-center sm:justify-start">
                                     <div class="flex shrink-0 items-center">
                                         {walletDetails.account ?
@@ -155,53 +154,76 @@ export default function NavBar({ connectWallet, disconnectWallet, walletDetails,
                                         <div>
 
                                             <h1 className='dark:text-white text-2xl'><strong>Balance:</strong> {walletDetails.balance} ETH</h1>
-                                            <h1 className='dark:text-yellow-500  text-2xl'><strong>Gold Balance:</strong> {goldBalance} GOLD</h1>
+                                            <h1 className='dark:text-yellow-500  text-2xl'><strong>Gold Balance:</strong> {Math.round(goldBalance * 100) / 100} GOLD</h1>
                                             <h1 className='dark:text-white text-2xl'><strong>Network:</strong> {walletDetails.network} <h5 className='text-sm'>(Chain ID: {walletDetails.chainId})</h5></h1>
-                                            <div className="mt-2">
+                                            <div className="mt-2" style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "50px",
+                                                marginBottom: "10px",
+                                            }}>
                                                 <input
                                                     type="number"
                                                     value={ethToSpend}
                                                     onChange={(e) => setEthToSpend(e.target.value)}
-                                                    className="w-full rounded px-2 py-1 text-sm mb-2 dark:bg-gray-800 dark:text-white border border-gray-300"
+                                                    className="w-full rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-white border border-gray-300"
                                                     placeholder="Etner ETH amount"
                                                 />
                                                 <button
                                                     onClick={buyGold}
                                                     className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded"
+                                                    style={{ width: "41%" }}
                                                 >
                                                     Buy GOLD
                                                 </button>
                                             </div>
-                                            <div className="mt-2">
+                                            <h2 className="text-xl font-semibold text-gray-200 dark:text-white flex items-center gap-2" style={{overflowWrap: "anywhere"}}>
+                                                <span className="text-yellow-400">{ethToSpend ? ethToSpend : 1}&nbsp;ETH</span>
+                                                <span className="text-gray-400">≙</span>
+                                                <span>
+                                                    {Intl.NumberFormat("en-US", {
+                                                        maximumFractionDigits: 2,
+                                                    }).format(ethToSpend ? ethToSpend*parseInt(walletDetails.Goldrate) : parseInt(walletDetails.Goldrate))}
+                                                    &nbsp;<span className="text-yellow-500">GOLD</span>
+                                                </span>
+                                            </h2>
+                                            <div className="mt-2" style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "50px",
+                                                marginBottom: "10px",
+                                            }}>
                                                 <input
                                                     type="number"
                                                     value={goldToSpend}
                                                     onChange={(e) => setGoldToSpend(e.target.value)}
-                                                    className="w-full rounded px-2 py-1 text-sm mb-2 dark:bg-gray-800 dark:text-white border border-gray-300"
+                                                    className="w-full rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-white border border-gray-300"
                                                     placeholder="Etner Gold amount"
                                                 />
                                                 <button
                                                     onClick={sellGold}
                                                     className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded"
+                                                    style={{ width: "41%" }}
                                                 >
                                                     Sell GOLD
                                                 </button>
                                             </div>
+                                            <h2 className="text-xl font-semibold text-gray-200 dark:text-white flex items-center gap-2" style={{overflowWrap: "anywhere"}}>
+                                                <span className="text-yellow-400">{goldToSpend ? goldToSpend : 1}&nbsp;GOLD</span>
+                                                <span className="text-gray-400">≙</span>
+                                                <span>
+                                                    {Intl.NumberFormat("en-US", {
+                                                        maximumFractionDigits: 18,
+                                                    }).format(goldToSpend ? goldToSpend/parseInt(walletDetails.Goldrate) : 1.0 / parseInt(walletDetails.Goldrate))}
+                                                    &nbsp;<span className="text-yellow-500">ETH</span>
+                                                </span>
+                                            </h2>
 
                                         </div>
                                     : (
                                         <button onClick={connectWallet}>Connect Wallet</button>
                                     )}
 
-                                {/* <p class="mb-6 text-2xl mt-3 text-gray-500 dark:text-gray-400">Welcome to your Wallet!</p>
-                                <p class="mb-6 text-sm -mt-2 text-gray-500 dark:text-gray-400">Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
-                                <p class="mb-6 text-sm -mt-2 text-gray-500 dark:text-gray-400">Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p> */}
-                                {/* <div class="grid grid-cols-2 gap-4">
-                                    <a href="#" class="px-4 py-2 text-sm font-medium text-center text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">Learn more</a>
-                                    <a href="#" class="inline-flex items-center px-4 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">Get access <svg class="rtl:rotate-180 w-3.5 h-3.5 ms-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
-                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9" />
-                                    </svg></a>
-                                </div> */}
                             </div>
 
                             <div class="absolute right-0 dark:bg-gray-800 border z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 ring-1 shadow-lg ring-black/5 focus:outline-hidden" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1" style={{ display: walletDetails.account ? "none" : toggle ? "block" : "none" }}>

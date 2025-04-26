@@ -10,12 +10,12 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
     const [uploadFile, setUploadFile] = useState(null);
     useEffect(() => {
         if (!task.fileURL) return;
-        // Fetch headers to get content-type
+        
         fetch(task.fileURL, { method: 'HEAD' })
             .then(res => {
                 const type = res.headers.get('content-type') || '';
                 setContentType(type);
-                // If it's text, fetch content body
+                
                 if (type.startsWith('text/')) {
                     fetch(task.fileURL)
                         .then(r => r.text())
@@ -27,12 +27,12 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
     }, [task.fileURL]);
     useEffect(() => {
         if (!task.submissionURL) return;
-        // Fetch headers to get content-type
+       
         fetch(task.submissionURL, { method: 'HEAD' })
             .then(res => {
                 const type = res.headers.get('content-type') || '';
                 setSubmitedContentType(type);
-                // If it's text, fetch content body
+                
                 if (type.startsWith('text/')) {
                     fetch(task.submissionURL)
                         .then(r => r.text())
@@ -43,7 +43,7 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
             .catch(() => { });
     }, [task.submissionURL]);
 
-    // Render file preview based on type
+
     const renderPreview = () => {
         if (!task.fileURL) return null
 
@@ -63,7 +63,7 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
                 </pre>
             )
         }
-        // fallback for any other type
+      
         return (
             <video
                 src={task.fileURL}
@@ -91,7 +91,7 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
                 </pre>
             )
         }
-        // fallback for any other type
+        
         return (
             <video
                 src={task.submissionURL}
@@ -109,12 +109,12 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
         }}>
             <h3 className="text-lg font-semibold text-white">{task.title}</h3>
 
-            {/* Short Description */}
+            
             <p className="text-white text-sm">
                 {expanded ? task.description : task.description.substring(0, 50) + "..."}
             </p>
 
-            {/* Expand Button */}
+          
             <button
                 className="text-blue-500 text-sm mt-2 hover:underline focus:outline-none"
                 onClick={() => setExpanded(!expanded)}
@@ -122,14 +122,25 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
                 {expanded ? "Show Less ▲" : "Show More ▼"}
             </button>
 
-            {/* Task Details (Only Visible When Expanded) */}
+            
             {expanded && (
                 <div className="mt-3 text-white text-sm">
                     <p><strong>Deadline:</strong> {task.deadline}</p>
                     <p><strong>Owner:</strong> {task.owner}</p>
                     <p><strong>Claimed By:</strong> {task.worker == 0x0000000000000000000000000000000000000000 ? 'None' : task.worker}</p>
-                    {/* File toggle */}
+                   
                     {task.fileURL && task.worker == userId && (
+                        <div>
+                            <button
+                                onClick={() => setFileOpen(!fileOpen)}
+                                className="text-blue-400 underline text-sm"
+                            >
+                                {fileOpen ? 'Hide Attachment' : 'Show Attachment'}
+                            </button>
+                            {fileOpen && renderPreview()}
+                        </div>
+                    )}
+                    {task.fileURL && task.owner == userId && (
                         <div>
                             <button
                                 onClick={() => setFileOpen(!fileOpen)}
@@ -146,7 +157,18 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
                                 onClick={() => setFileOpen(!fileOpen)}
                                 className="text-blue-400 underline text-sm"
                             >
-                                {fileOpen ? 'Hide Attachment' : 'Show Attachment'}
+                                {fileOpen ? 'Hide submited Attachment' : 'Show submited Attachment'}
+                            </button>
+                            {fileOpen && renderSubmissionPreview()}
+                        </div>
+                    )}
+                    {task.submissionURL && task.worker == userId && (
+                        <div>
+                            <button
+                                onClick={() => setFileOpen(!fileOpen)}
+                                className="text-blue-400 underline text-sm"
+                            >
+                                {fileOpen ? 'Hide submited Attachment' : 'Show submited Attachment'}
                             </button>
                             {fileOpen && renderSubmissionPreview()}
                         </div>
@@ -171,7 +193,7 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
                             <button
                                 className="bg-gray-800 text-white px-4 py-2 rounded-lg transition"
                                 onClick={() => claimTask(task.id)}
-                            // disabled
+                           
                             >
                                 Not Yet Claimed
                             </button>
@@ -201,14 +223,17 @@ export default function TaskCard({ key, task, claimTask, userId, completeTask, s
                                             >
                                                 Submit Again
                                             </button>
+                                            <button
+                                                onClick={() => completeTask(task.id)}
+                                                className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-800 "
+                                                disabled
+                                                style={{
+                                                    marginLeft: "66px"
+                                                }}
+                                            >
+                                                Submited
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => completeTask(task.id)}
-                                            className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-800 "
-                                            disabled
-                                        >
-                                            Submited
-                                        </button>
                                     </>
                                     :
                                     <>

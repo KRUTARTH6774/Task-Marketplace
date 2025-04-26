@@ -5,12 +5,10 @@ import { create as ipfsHttpClient } from 'ipfs-http-client';
 import { ethers } from "ethers";
 import contractABI from "../contractABI.json";
 import { PinataSDK } from "pinata";
-const contractAddress = "0x8D76d8d83EB047B1773Db419b63f3a98861947d5";
-// const contractAddress = "0x80e689bE32Cad9f488d7494C39808968CC8CCD83";
-// const contractAddress = "0x81D91ceC098A9C2a3dDe39f0a9FF341535C45E83";
-const goldTokenAddress = "0xbC50a5e1f63d239f30B0C9Bf35cfD39697b9b9Ae"; // Replace with actual
+// const contractAddress = "0x8C81555c9bCeC7287c15B92c20daf9759DC2ff8E";
+const contractAddress = "0xE447f30e8C4694b6dA011fF76e6157e4a8D8B129";
+const goldTokenAddress = "0xd878E7C57Eb81a6182010672caA7C20bEDB7D847"; 
 const JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiIyYjVkMTM2Ny05ZmE2LTQwZjYtOWNlMS1iMDk1MTNlODViMmQiLCJlbWFpbCI6IjIwMTkwMTA5OEBkYWlpY3QuYWMuaW4iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiN2ZiZWU3MWRiYzM5YzgyOGNjY2EiLCJzY29wZWRLZXlTZWNyZXQiOiJlOTQzZTUxMzdiMDQ0OTYwY2MxYzc1MDc2ZjU2MWYyYzMyMjRmZTNhZmJiN2I1OTBlODNmMGNiNmE4ZDdlMGQ3IiwiZXhwIjoxNzc2NDU3MDgzfQ.4ve_RsSMA06BuV-416hrT5mhyjA8naj2kGrAQPnctZY";
-// const token = 'z6MkngXkeWBdaWpjchy2MkLNhPk4mruQCw172FDCk7CfTfBZ';
 const tokenDecimals = 18;
 
 export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fetchEthBalance }) {
@@ -46,7 +44,7 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
         }
     }
     async function submitWork(taskId, file) {
-        // 1) pin it exactly like you do in createTask
+        
         let submissionCID;
         try {
           submissionCID = await uploadFileToIPFS(file);
@@ -55,7 +53,7 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
           return;
         }
       
-        // 2) call the contract
+      
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer   = await provider.getSigner();
         const taskC    = new ethers.Contract(contractAddress, contractABI, signer);
@@ -63,7 +61,7 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
         try {
           const tx = await taskC.submitWork(taskId, submissionCID);
           await tx.wait();
-          await fetchTasks();        // refresh UI to show new submissionCID
+          await fetchTasks();      
           alert("Work submitted!");
         } catch (err) {
           console.error(err);
@@ -93,8 +91,8 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
             await tx.wait();
 
             console.log("✅ Task completed!");
-            await fetchTasks(); // Refresh UI
-            await fetchGoldBalance(); // Refresh balance after reward is sent
+            await fetchTasks(); 
+            await fetchGoldBalance(); 
             await fetchEthBalance();
         } catch (err) {
             console.error("❌ Error completing task:", err);
@@ -118,11 +116,11 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
 
             const rewardInWei = ethers.parseUnits(reward.toString(), tokenDecimals);
 
-            // Step 1: Approve GOLD transfer
+           
             const approveTx = await goldToken.approve(contractAddress, rewardInWei);
             await approveTx.wait();
 
-            // Step 2: Create the task
+            
             const tx = await taskContract.createTask(title, description, deadline, rewardInWei, fileCID);
             await tx.wait();
             console.log("✅ Task created");
@@ -166,6 +164,8 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
                 const submitedfileUrl = task.submissionCID
                     ? `https://red-tropical-planarian-622.mypinata.cloud/ipfs/${task.submissionCID}`
                     : null;
+                console.log(submitedfileUrl);
+                
                 // await url(task.fileCID);
                 taskArray.push({
                     id: Number(task.id),
@@ -261,31 +261,21 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
             'fileCID': fileCID
         }));
         console.log(formData);
-        // createTask(formData.title, formData.description, formData.reward, Math.floor(new Date(formData.deadline).getTime() / 1000, fileCID,), async () => {
-        //     await fetchTasks(); // ✅ Fetch again only after confirmed
-        //     // setToggleCreatetask(false); // Close modal
-        // });
         createTask(
             formData.title,
             formData.description,
-            // deadline first:
             Math.floor(new Date(formData.deadline).getTime() / 1000),
-            // reward next:
             formData.reward,
-            // and fileCID last:
             fileCID,
-            // onSuccess callback:
+           
             async () => {
                 await fetchTasks();
                 setToggleCreatetask(false);
             }
         );
         setLoading(true);
-        // tasks.push(formData);
-        // await fetchTasks();
         setTaskID(taskID + 1);
         setToggleCreatetask(false);
-        // Add logic to send data to server or perform other actions
     };
     return (
         <>
@@ -437,12 +427,6 @@ export default function Tasks({ walletDetails, fetchGoldBalance, goldBalance, fe
                                         <input id="default-datepicker" type="date" name="deadline" value={formData.deadline} onChange={handleChange} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Select date" />
                                     </div>
                                 </div>
-                                {/* <div class="flex items-start mb-6">
-                                    <div class="flex items-center h-5">
-                                        <input id="remember" type="checkbox" value="" class="w-4 h-4 border border-gray-300 rounded-sm bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800" required />
-                                    </div>
-                                    <label for="remember" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">I agree with the <a href="#" class="text-blue-600 hover:underline dark:text-blue-500">terms and conditions</a>.</label>
-                                </div> */}
                             </div>
 
                         </div>
